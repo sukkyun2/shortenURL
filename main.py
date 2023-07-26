@@ -1,16 +1,36 @@
-# This is a sample Python script.
+import os.path
 
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from fastapi.responses import RedirectResponse
+
+import config
+import data
+import shorten
+
+app = FastAPI()
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+@app.get("/")
+async def read_index():
+    return FileResponse('public/index.html', media_type='text/html')
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+@app.get("/url/short")
+async def shorten_URL(url):
+    token = shorten.shorten_token()
+    data.set(token, url)
+    short_url = os.path.join(config.host, token)
+    return {"message": "success", "url": short_url}
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+@app.get("/{shorten_token}")
+async def redirect(shorten_token):
+    origin_url = data.get(shorten_token)
+    if origin_url is None:
+        origin_url = "/"
+    return RedirectResponse(url=origin_url)
+
+
+app.mount("/", StaticFiles(directory="public"), name="static")
